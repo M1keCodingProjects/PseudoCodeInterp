@@ -1,0 +1,23 @@
+Program     :== Expression*
+Expression  :== ( Instruction | Assignment ) "\n"
+Assignment  :== WORD "<-" ( Operation | Identifier )
+Block       :== Expression | ( "\n" ( "\t" Expression )+ )
+List        :== ( Identifier "," )* Identifier
+
+Instruction :== WRITE | READ | IF | FOR | WHILE | REPEAT
+WRITE       :== "WRITE" ( Operation | List )
+READ        :== "READ" List
+IF          :== "IF" Condition "THEN" Block ( "ELSE" Block )?
+FOR         :== "FOR" Assignment "DO" Block
+WHILE       :== "WHILE" Condition "DO" Block
+REPEAT      :== "REPEAT" Block "UNTIL" Condition
+
+Operation   :== Identifier Operand Identifier
+Operand     :== /^[\+\-\*\/\^]|MOD/
+
+Identifier  :== WORD | NUMBER
+WORD        :== /^[a-zA-Z_]\w*/
+NUMBER      :== /^\d+\.d+/
+                    
+Condition   :== Identifier Comparison Identifier
+Comparison  :== /^[<!>]?=/           
