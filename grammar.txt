@@ -1,11 +1,11 @@
-Program     :== Expression*
+Program     :== Expression* EOF
 Expression  :== ( Instruction | Assignment ) "\n"
 Assignment  :== WORD "<-" ( Operation | Identifier )
 Block       :== Expression | ( "\n" ( "\t" Expression )+ )
-List        :== ( Identifier "," )* Identifier
+List        :== ( WORD "," )* WORD
 
 Instruction :== WRITE | READ | IF | FOR | WHILE | REPEAT
-WRITE       :== "WRITE" ( Operation | List | Message )
+WRITE       :== "WRITE" ( Operation | Identifier | Message )
 READ        :== "READ" List
 IF          :== "IF" Condition "THEN" Block ( "ELSE" Block )?
 FOR         :== "FOR" Assignment "DO" Block
