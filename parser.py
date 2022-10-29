@@ -20,28 +20,27 @@ class Parser:
 
     def Expression(self):
         if self.lookahead is None: raise Exception("Abrupt ending in Expression")
-        value = self.Assignment() if self.lookahead["type"] == "arrow" else self.Instruction()
+        firstToken = self.eat("WORD")
+        value = self.Assignment(firstToken) if self.lookahead["type"] == "arrow" else self.Instruction(firstToken)
         self.eat("newline")
         return {
             "type"  : "Expression",
             "value" : value
         }
 
-    def Assignment(self):
-        target = self.eat("WORD")
+    def Assignment(self, firstToken):
         self.eat("arrow")
         value = self.Identifier() #incomplete!
         return {
             "type"   : "Assignment",
-            "target" : target,
+            "target" : firstToken,
             "value"  : value
         }
 
-    def Instruction(self):
+    def Instruction(self, firstToken):
         if self.lookahead is None: raise Exception("Abrupt ending in Instruction")
-        instrKW = self.eat("WORD")
-        if instrKW["value"] == "WRITE": return self.WRITE()
-        raise Exception(f"Unrecognized Instruction {instrKW}")
+        if firstToken["value"] == "WRITE": return self.WRITE()
+        raise Exception(f"Unrecognized Instruction {firstToken}")
 
     def WRITE(self):
         return {
@@ -54,7 +53,7 @@ class Parser:
         value = self.eat("NUMBER") if self.lookahead["type"] == "NUMBER" else self.eat("WORD")
         return {
             "type"  : "Identifier",
-            "isVar" : value["type"],
+            "isVar" : value["type"] == "WORD",
             "value" : value["value"]
         }
 

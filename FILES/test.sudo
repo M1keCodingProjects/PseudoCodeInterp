@@ -1,1 +1,1 @@
-WRITE "Hello, World!"
+WRITE <- 2.23

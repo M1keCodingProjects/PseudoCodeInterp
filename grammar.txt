@@ -18,7 +18,7 @@ Operand     :== /^[\+\-\*\/\^]|MOD/
 Message     :== /^\"[^\"\n]*\"/
 Identifier  :== WORD | NUMBER
 WORD        :== /^[a-zA-Z_]\w*/
-NUMBER      :== /^\d+\.d+/
+NUMBER      :== /^\d+(\.\d+)?/
                     
 Condition   :== Identifier Comparison Identifier
 Comparison  :== /^[<!>]?=/           

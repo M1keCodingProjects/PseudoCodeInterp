@@ -7,7 +7,7 @@ tokenPatterns = [
     ["^[<!>]?=", "comparison"],
     ["^[\+\-\*\/\^]|MOD", "operand"],
     ["^\"[^\"\n]*\"", "message"],
-    ["^\d+(\.d+)?", "NUMBER"],
+    ["^\d+(\.\d+)?", "NUMBER"],
     ["^[a-zA-Z_]\w*", "WORD"],
 ]
 
