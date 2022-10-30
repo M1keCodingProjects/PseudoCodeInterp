@@ -1,24 +1,24 @@
-Program     :== Expression* EOF
-Expression  :== ( Instruction | Assignment ) "\n"
-Assignment  :== WORD "<-" ( Operation | Identifier )
+✔ Program     :== Expression* EOF
+✔ Expression  :== ( Instruction | Assignment ) "\n"
+✔ Assignment  :== WORD "<-" Operation
 Block       :== Expression | ( "\n" ( "\t" Expression )+ )
-List        :== ( WORD "," )* WORD
+✔ List        :== ( WORD "," )* WORD
 
-Instruction :== WRITE | READ | IF | FOR | WHILE | REPEAT
-WRITE       :== "WRITE" ( Operation | Identifier | Message )
-READ        :== "READ" List
+✔ Instruction :== /^WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL/
+✔ WRITE       :== "WRITE" ( Operation | Message )
+✔ READ        :== "READ" List
 IF          :== "IF" Condition "THEN" Block ( "ELSE" Block )?
 FOR         :== "FOR" Assignment "DO" Block
 WHILE       :== "WHILE" Condition "DO" Block
 REPEAT      :== "REPEAT" Block "UNTIL" Condition
 
-Operation   :== Identifier Operand Identifier
-Operand     :== /^[\+\-\*\/\^]|MOD/
+✔ Operation   :== Identifier ( Operand Identifier )?
+✔ Operand     :== /^[\+\-\*\/\^]|MOD/
 
-Message     :== /^\"[^\"\n]*\"/
-Identifier  :== WORD | NUMBER
-WORD        :== /^[a-zA-Z_]\w*/
-NUMBER      :== /^\d+(\.\d+)?/
+✔ Message     :== /^\"[^\"\n]*\"/
+✔ Identifier  :== WORD | NUMBER
+✔ WORD        :== /^[a-zA-Z_]\w*/
+✔ NUMBER      :== /^\d+(\.\d+)?/
                     
 Condition   :== Identifier Comparison Identifier
-Comparison  :== /^[<!>]?=/           
+Comparison  :== /^[<!>]?=/

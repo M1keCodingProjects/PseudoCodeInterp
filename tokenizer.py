@@ -1,13 +1,16 @@
 import re
 
 tokenPatterns = [
+    ["^\n+ +", "indent"],
     ["^ +", None],
-    ["^\n", "newline"],
+    ["^\n+", "newline"],
     ["^<-", "arrow"],
-    ["^[<!>]?=", "comparison"],
+    ["^,", ","],
+    ["^(<|<=|>|>=|=|!=)", "comparison"],
     ["^[\+\-\*\/\^]|MOD", "operand"],
     ["^\"[^\"\n]*\"", "message"],
     ["^\d+(\.\d+)?", "NUMBER"],
+    ["^(WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL)", "KEYWORD"],
     ["^[a-zA-Z_]\w*", "WORD"],
 ]
 
@@ -24,6 +27,8 @@ class Tokenizer:
             tokenValue = self.match(regexp, substr)
             if tokenValue is None: continue
             if tokenType is None: return self.getNextToken()
+            
+            if tokenType == "message": tokenValue = tokenValue[1:-1]
             return {
                 "type": tokenType,
                 "value": tokenValue
