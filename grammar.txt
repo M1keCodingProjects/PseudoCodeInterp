@@ -10,8 +10,8 @@
 ✔ IF          :== "IF" Condition "THEN" Block ( ELSE )?
 ✔ ELSE        :== "ELSE" Block
 ✔ FOR         :== "FOR" Assignment "DO" Block
-WHILE       :== "WHILE" Condition "DO" Block
-REPEAT      :== "REPEAT" Block "UNTIL" Condition
+✔ WHILE       :== "WHILE" Condition "DO" Block
+✔ REPEAT      :== "REPEAT" Block "UNTIL" Condition
 
 ✔ Operation   :== Identifier ( Operand Identifier )?
 ✔ Operand     :== /^[\+\-\*\/\^]|MOD/

@@ -42,6 +42,10 @@ class Parser:
                 if lines[-1]["type"] == "IF-INSTR": lines[-1]["else"] = latestExpr["block"]
                 else: raise Exception("Unexpected \"ELSE\"")
             
+            elif latestExpr["type"] == "UNTIL-INSTR":
+                if lines[-1]["type"] == "REPEAT-INSTR": lines[-1]["cond"] = latestExpr["cond"]
+                else: raise Exception("Unexpected \"UNTIL\"")
+            
             else: lines.append(latestExpr)
         self.eat("closeBlock")
         
@@ -53,7 +57,6 @@ class Parser:
     def Expression(self, eatNewline = True):
         if self.lookahead is None: raise Exception("Abrupt ending in Expression")
         value = self.Assignment() if self.lookahead["type"] == "WORD" else self.Instruction()
-        self.canAppendElse = value["type"] == "IF-INSTR"
         if eatNewline and (self.lookahead is not None and self.lookahead["type"] != "closeBlock"): self.eat("newline")
         return {
             "type"  : "Expression",
@@ -79,6 +82,7 @@ class Parser:
         if keyword == "FOR"   : return self.FOR()
         if keyword == "WHILE" : return self.WHILE()
         if keyword == "REPEAT": return self.REPEAT()
+        if keyword == "UNTIL" : return self.UNTIL()
         raise Exception(f"Unrecognized Instruction {keyword}")
 
     def WRITE(self):
@@ -98,12 +102,17 @@ class Parser:
         thenKW = self.eat("KEYWORD")["value"]
         if thenKW != "THEN": raise Exception(f"Unexpected KEYWORD \"{thenKW}\", expected \"THEN\"")
         block = self.Block()["value"]
-        
-        return {
+        token = {
             "type"  : "IF-INSTR",
             "cond"  : condition,
             "block" : block
         }
+
+        if self.lookahead and self.lookahead["type"] != "newline":
+            self.eat("KEYWORD")
+            token["else"] = self.ELSE()["block"]
+
+        return token
     
     def ELSE(self):
         return {
@@ -122,10 +131,33 @@ class Parser:
         }
 
     def WHILE(self):
-        pass
+        cond = self.Condition()
+        doKW = self.eat("KEYWORD")["value"]
+        if doKW != "DO": raise Exception(f"Unexpected KEYWORD \"{doKW}\", expected \"DO\"")
+        return {
+            "type"  : "WHILE-INSTR",
+            "cond"  : cond,
+            "block" : self.Block()["value"]
+        }
 
     def REPEAT(self):
-        pass
+        block = self.Block()["value"]
+        token = {
+            "type"  : "REPEAT-INSTR",
+            "block" : block
+        }
+
+        if self.lookahead and self.lookahead["type"] != "newline":
+            self.eat("KEYWORD")
+            token["cond"] = self.UNTIL()["cond"]
+
+        return token
+
+    def UNTIL(self):
+        return {
+            "type" : "UNTIL-INSTR",
+            "cond" : self.Condition(),
+        }
 
     def List(self):
         wordList = []
@@ -151,7 +183,7 @@ class Parser:
             "cp2"     : cp2
         }
 
-    def Block(self):
+    def Block(self): #Opted for the classic {...} syntax style for blocks cuz I couldn't be bothered to keep track of indentation. IDK why nor how python does it. 
         lines = []
         token = {
             "type" : "Block",
@@ -162,7 +194,7 @@ class Parser:
             token["value"] = self.Expression(eatNewline = False)["value"]
             return token
 
-        token["value"] = self.Program()
+        token["value"] = self.Program()["value"]
         return token
 
     def Operation(self):
