@@ -21,7 +21,7 @@ def formatNode(node, indent = ""):
 
 class Parser:
     def __init__(self, fileContent):
-        self.tokenizer = Tokenizer(fileContent)
+        self.tokenizer = Tokenizer("{" + fileContent + "}\n") #It takes me half an hour to explain why the {...}\n is needed, don't bother asking
     
     def parse(self):
         self.lookahead = self.tokenizer.getNextToken()
@@ -30,22 +30,31 @@ class Parser:
         return program
     
     def Program(self):
-        content = []
-        while self.lookahead is not None:
+        lines = []
+        self.eat("openBlock")
+        while self.lookahead["type"] != "closeBlock":
             if self.lookahead["type"] == "newline":
                 self.eat("newline")
                 continue
-            content.append(self.Expression()["value"])
+            
+            latestExpr = self.Expression()["value"]
+            if latestExpr["type"] == "ELSE-INSTR":
+                if lines[-1]["type"] == "IF-INSTR": lines[-1]["else"] = latestExpr["block"]
+                else: raise Exception("Unexpected \"ELSE\"")
+            
+            else: lines.append(latestExpr)
+        self.eat("closeBlock")
         
         return {
             "type"  : "Program",
-            "value" : content
+            "value" : lines
         }
 
-    def Expression(self):
+    def Expression(self, eatNewline = True):
         if self.lookahead is None: raise Exception("Abrupt ending in Expression")
         value = self.Assignment() if self.lookahead["type"] == "WORD" else self.Instruction()
-        if self.lookahead["type"] != "closeBlock": self.eat("newline")
+        self.canAppendElse = value["type"] == "IF-INSTR"
+        if eatNewline and (self.lookahead is not None and self.lookahead["type"] != "closeBlock"): self.eat("newline")
         return {
             "type"  : "Expression",
             "value" : value
@@ -66,6 +75,7 @@ class Parser:
         if keyword == "WRITE" : return self.WRITE()
         if keyword == "READ"  : return self.READ()
         if keyword == "IF"    : return self.IF()
+        if keyword == "ELSE"  : return self.ELSE()
         if keyword == "FOR"   : return self.FOR()
         if keyword == "WHILE" : return self.WHILE()
         if keyword == "REPEAT": return self.REPEAT()
@@ -88,10 +98,18 @@ class Parser:
         thenKW = self.eat("KEYWORD")["value"]
         if thenKW != "THEN": raise Exception(f"Unexpected KEYWORD \"{thenKW}\", expected \"THEN\"")
         block = self.Block()["value"]
+        
         return {
             "type"  : "IF-INSTR",
             "cond"  : condition,
             "block" : block
+        }
+    
+    def ELSE(self):
+        
+        return {
+            "type"  : "ELSE-INSTR",
+            "block" : self.Block()["value"]
         }
     
     def FOR(self):
@@ -135,15 +153,10 @@ class Parser:
 
         if self.lookahead is None: raise Exception("Abrupt ending block")
         if self.lookahead["type"] != "openBlock": 
-            token["value"] = self.Expression()["value"]
+            token["value"] = self.Expression(eatNewline = False)["value"]
             return token
-        
-        self.eat("openBlock")
-        while self.lookahead["type"] != "closeBlock":
-            lines.append(self.Expression()["value"])
-        self.eat("closeBlock")
-        
-        token["value"] = lines
+
+        token["value"] = self.Program()
         return token
 
     def Operation(self):

@@ -1,13 +1,14 @@
-✔ Program     :== Expression* EOF
+✔ Program     :== Expression+
 ✔ Expression  :== ( Instruction | Assignment ) "\n"
 ✔ Assignment  :== WORD "<-" Operation
-Block       :== Expression | ( "{" Expression+ "}" )
+✔ Block       :== Expression | ( "{" Program "}" )
 ✔ List        :== ( WORD "," )* WORD
 
 ✔ Instruction :== /^WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL/
 ✔ WRITE       :== "WRITE" ( Operation | Message )
 ✔ READ        :== "READ" List
-IF          :== "IF" Condition "THEN" Block ( "ELSE" Block )?
+✔ IF          :== "IF" Condition "THEN" Block ( ELSE )?
+✔ ELSE        :== "ELSE" Block
 FOR         :== "FOR" Assignment "DO" Block
 WHILE       :== "WHILE" Condition "DO" Block
 REPEAT      :== "REPEAT" Block "UNTIL" Condition
