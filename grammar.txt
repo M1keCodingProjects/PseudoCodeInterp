@@ -9,7 +9,7 @@
 ✔ READ        :== "READ" List
 ✔ IF          :== "IF" Condition "THEN" Block ( ELSE )?
 ✔ ELSE        :== "ELSE" Block
-FOR         :== "FOR" Assignment "DO" Block
+✔ FOR         :== "FOR" Assignment "DO" Block
 WHILE       :== "WHILE" Condition "DO" Block
 REPEAT      :== "REPEAT" Block "UNTIL" Condition
 
@@ -21,5 +21,5 @@ REPEAT      :== "REPEAT" Block "UNTIL" Condition
 ✔ WORD        :== /^[a-zA-Z_]\w*/
 ✔ NUMBER      :== /^\d+(\.\d+)?/
                     
-Condition   :== Identifier Comparison Identifier
-Comparison  :== /^[<!>]?=/
+✔ Condition   :== Identifier Comparison Identifier
+✔ Comparison  :== /^[<!>]?=/

@@ -1,4 +1,4 @@
-IF n > 2 THEN {
+FOR i <- 2 * 4 DO {
     IF n > 1 THEN{
         WRITE 2
     }

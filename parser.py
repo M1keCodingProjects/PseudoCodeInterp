@@ -106,14 +106,20 @@ class Parser:
         }
     
     def ELSE(self):
-        
         return {
             "type"  : "ELSE-INSTR",
             "block" : self.Block()["value"]
         }
     
     def FOR(self):
-        pass
+        iters = self.Assignment()
+        doKW = self.eat("KEYWORD")["value"]
+        if doKW != "DO": raise Exception(f"Unexpected KEYWORD \"{doKW}\", expected \"DO\"")
+        return {
+            "type"  : "FOR-INSTR",
+            "iters" : iters,
+            "block" : self.Block()["value"]
+        }
 
     def WHILE(self):
         pass
