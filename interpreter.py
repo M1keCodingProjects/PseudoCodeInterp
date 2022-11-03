@@ -10,7 +10,7 @@ class Interpreter:
         self.run()
 
     def parse(self):
-        print(self.parser.parse())
+        self.parser.parse()
 
     def build(self):
         self.parse()

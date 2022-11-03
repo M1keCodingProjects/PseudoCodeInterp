@@ -1,4 +1,8 @@
-IF n > 2 THEN
-    IF n > 1 THEN
-        WRITE 2
+IF n > 2 THEN {
+    IF n > 1 THEN{
+        WRITE 2}
     WRITE 3
+
+    IF m = 3 THEN READ f
+}
+

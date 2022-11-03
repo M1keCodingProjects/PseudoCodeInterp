@@ -1,7 +1,7 @@
 ✔ Program     :== Expression* EOF
 ✔ Expression  :== ( Instruction | Assignment ) "\n"
 ✔ Assignment  :== WORD "<-" Operation
-Block       :== Expression | ( "\n" ( "\t" Expression )+ )
+Block       :== Expression | ( "{" Expression+ "}" )
 ✔ List        :== ( WORD "," )* WORD
 
 ✔ Instruction :== /^WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL/

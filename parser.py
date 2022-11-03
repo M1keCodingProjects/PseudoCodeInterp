@@ -1,4 +1,23 @@
+from re import S
 from tokenizer import Tokenizer
+
+def formatNode(node, indent = ""):
+    nextIndent = indent + "  "
+    if type(node) is list:
+        res = "["
+        for item in node:
+            res += f"\n{nextIndent}"
+            res += formatNode(item, nextIndent) if type(item) in (list, dict) else str(item)
+        
+        return res + f"\n{indent}]"
+    
+    res = "{"
+    for key, value in node.items():
+        res += f"\n{nextIndent}"
+        if key != "type": res += f"{key} : "
+        res += formatNode(value, nextIndent) if type(value) in (list, dict) else str(value) 
+
+    return res + "\n" + indent + "}"
 
 class Parser:
     def __init__(self, fileContent):
@@ -7,21 +26,26 @@ class Parser:
     def parse(self):
         self.lookahead = self.tokenizer.getNextToken()
         program = self.Program()
+        print(formatNode(program))
         return program
     
     def Program(self):
         content = []
-        while self.lookahead is not None: content.append(self.Expression()["value"])
+        while self.lookahead is not None:
+            if self.lookahead["type"] == "newline":
+                self.eat("newline")
+                continue
+            content.append(self.Expression()["value"])
         
         return {
             "type"  : "Program",
             "value" : content
         }
 
-    def Expression(self, mustNewline = True):
+    def Expression(self):
         if self.lookahead is None: raise Exception("Abrupt ending in Expression")
         value = self.Assignment() if self.lookahead["type"] == "WORD" else self.Instruction()
-        if mustNewline: self.eat("newline")
+        if self.lookahead["type"] != "closeBlock": self.eat("newline")
         return {
             "type"  : "Expression",
             "value" : value
@@ -110,13 +134,14 @@ class Parser:
         }
 
         if self.lookahead is None: raise Exception("Abrupt ending block")
-        if self.lookahead["type"] != "indent": 
-            token["value"] = self.Expression(mustNewline = False)["value"]
+        if self.lookahead["type"] != "openBlock": 
+            token["value"] = self.Expression()["value"]
             return token
         
-        while self.lookahead["type"] == "indent":
-            self.eat("indent")
-            lines.append(self.Expression(mustNewline = False)["value"])
+        self.eat("openBlock")
+        while self.lookahead["type"] != "closeBlock":
+            lines.append(self.Expression()["value"])
+        self.eat("closeBlock")
         
         token["value"] = lines
         return token

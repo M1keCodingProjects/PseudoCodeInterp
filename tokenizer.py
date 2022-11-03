@@ -1,10 +1,11 @@
 import re
 
 tokenPatterns = [
-    ["^\n+ +", "indent"],
     ["^ +", None],
     ["^\n+", "newline"],
     ["^<-", "arrow"],
+    ["^\{\n*", "openBlock"],
+    ["^\}", "closeBlock"],
     ["^,", ","],
     ["^(<|<=|>|>=|=|!=)", "comparison"],
     ["^[\+\-\*\/\^]|MOD", "operand"],
@@ -29,6 +30,7 @@ class Tokenizer:
             if tokenType is None: return self.getNextToken()
             
             if tokenType == "message": tokenValue = tokenValue[1:-1]
+            
             return {
                 "type": tokenType,
                 "value": tokenValue
