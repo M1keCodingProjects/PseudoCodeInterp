@@ -1,23 +1,18 @@
-from re import S
 from tokenizer import Tokenizer
 
 def formatNode(node, indent = ""):
-    nextIndent = indent + "  "
-    if type(node) is list:
-        res = "["
-        for item in node:
-            res += f"\n{nextIndent}"
-            res += formatNode(item, nextIndent) if type(item) in (list, dict) else str(item)
-        
-        return res + f"\n{indent}]"
-    
-    res = "{"
-    for key, value in node.items():
-        res += f"\n{nextIndent}"
-        if key != "type": res += f"{key} : "
-        res += formatNode(value, nextIndent) if type(value) in (list, dict) else str(value) 
+    if type(node) not in (list, dict): return str(node)
 
-    return res + "\n" + indent + "}"
+    nextIndent = indent + "⋮ "
+    res, iterator, ending = ("[", node, "]") if type(node) is list else ("{", node.items(), "}")
+    
+    for item in iterator:
+        res += f"\n{nextIndent}"
+        itemIsList = type(item) is tuple
+        if itemIsList and item[0] != "type": res += f"{item[0]} : "
+        res += formatNode(item[1] if itemIsList else item, nextIndent)
+
+    return f"{res}\n{indent}{ending}"
 
 class Parser:
     def __init__(self, fileContent):
