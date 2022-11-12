@@ -18,10 +18,10 @@ class Parser:
     def __init__(self, fileContent):
         self.tokenizer = Tokenizer("{" + fileContent + "}\n") #It takes me half an hour to explain why the {...}\n is needed, don't bother asking
     
-    def parse(self):
+    def parse(self, doPrint=False):
         self.lookahead = self.tokenizer.getNextToken()
         program = self.Program()
-        print(formatNode(program))
+        if doPrint: print(formatNode(program))
         return program
     
     def Program(self):
@@ -59,7 +59,7 @@ class Parser:
         }
 
     def Assignment(self):
-        target = self.eat("WORD")
+        target = self.eat("WORD")["value"]
         self.eat("arrow")
         value = self.Operation()
         return {
@@ -198,7 +198,7 @@ class Parser:
             "op1"  : self.Identifier(),
         }
         if self.lookahead is None or self.lookahead["type"] != "operand": return token["op1"]
-        operand = self.eat("operand")
+        operand = self.eat("operand")["value"]
         op2 = self.Identifier()
         token["operand"] = operand
         token["op2"]     = op2

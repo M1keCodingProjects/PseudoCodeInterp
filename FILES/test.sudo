@@ -1,11 +1,3 @@
-WHILE n > 1 DO {
-    IF n > 1 THEN{
-        FOR i <- 5 DO WRITE 2
-    } ELSE {
-        WRITE 3 }
-
-    IF m = 3 THEN READ f ELSE WRITE "Hi"
-    READ h
-}
-
-REPEAT WRITE "Hello" UNTIL n > 2
+m <- 2 - 30
+m <- m * -1
+n <- m MOD 3

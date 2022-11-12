@@ -14,7 +14,7 @@
 ✔ REPEAT      :== "REPEAT" Block "UNTIL" Condition
 
 ✔ Operation   :== Identifier ( Operand Identifier )?
-✔ Operand     :== /^[\+\-\*\/\^]|MOD/
+✔ Operand     :== /^([\+\-\*\/\^]|MOD)/
 
 ✔ Message     :== /^\"[^\"\n]*\"/
 ✔ Identifier  :== WORD | NUMBER
