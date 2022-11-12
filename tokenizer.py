@@ -8,9 +8,9 @@ tokenPatterns = [
     ["^\}", "closeBlock"],
     ["^,", ","],
     ["^(<|<=|>|>=|=|!=)", "comparison"],
-    ["^[\+\-\*\/\^]|MOD", "operand"],
     ["^\"[^\"\n]*\"", "message"],
-    ["^\d+(\.\d+)?", "NUMBER"],
+    ["^-?\d+(\.\d+)?", "NUMBER"],
+    ["^([\+\-\*\/\^]|MOD)", "operand"],
     ["^(WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL)", "KEYWORD"],
     ["^[a-zA-Z_]\w*", "WORD"],
 ]
@@ -30,7 +30,7 @@ class Tokenizer:
             if tokenType is None: return self.getNextToken()
             
             if tokenType == "message": tokenValue = tokenValue[1:-1]
-            
+
             return {
                 "type": tokenType,
                 "value": tokenValue
