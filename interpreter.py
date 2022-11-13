@@ -2,10 +2,20 @@
 from parser import Parser
 
 runtime_vars = {}
+
+def Instruction(token):
+    return {
+        "WRITE-INSTR" : WriteInstruction,
+        "READ-INSTR"  : ReadInstruction,
+    }[token["type"]](token)
+
+def defineVariable(varName, value):
+    runtime_vars[varName] = value
+
 class Interpreter:
     def __init__(self, fileContent, toggle_dbgMode = False):
         self.dbgModeFlag = toggle_dbgMode
-        self.parser   = Parser(fileContent)
+        self.parser = Parser(fileContent)
     
     def exec(self):
         self.build()
@@ -15,13 +25,13 @@ class Interpreter:
         return self.parser.parse(doPrint)
 
     def build(self):
-        self.AST = Block(self.parse())
+        self.AST = Block(self.parse(doPrint=True))
         if self.dbgModeFlag: print("Build complete.")
 
     def run(self):
         self.AST.exec()
         if self.dbgModeFlag: print("Execution terminated successfully.")
-        print(runtime_vars)
+        #print(runtime_vars)
 
 class Token:
     def __init__(self, token):
@@ -50,14 +60,39 @@ class Assignment(Token):
         self.value = Operation(token["value"]) if token["value"]["type"] == "Operation" else Identifier(token["value"])
     
     def exec(self):
-        runtime_vars[self.target] = self.value.exec()
+        defineVariable(self.target, self.value.exec())
 
-class Instruction(Token):
+class WriteInstruction(Token):
     def __init__(self, token): super().__init__(token)
 
+    def argumentize(self, token):
+        value = token["value"]
+        self.value = Operation(value) if value["type"] == "Operation" else Identifier(value)
+    
+    def exec(self):
+        print(self.value.exec())
+
+class ReadInstruction(Token):
+    def __init__(self, token): super().__init__(token)
+
+    def argumentize(self, token):
+        value = token["value"]
+        if type(value) is str:
+            self.value = value
+            return
+        
+        self.value = value.copy()
+        if len(self.value) != len(set(self.value)): raise Exception(f"List of input values \"{', '.join(self.value)}\" contains duplicate names.")
+    
+    def exec(self):
+        for name in self.value:
+            value = input(f"Program requested value for variable \"{name}\": ")
+            try: value = float(value) if "." in value else int(value)
+            except ValueError: raise RuntimeError("Cannot input non-numeric value for variables.")
+            defineVariable(name, value)
+
 class Operation(Token):
-    def __init__(self, token):
-        super().__init__(token)
+    def __init__(self, token): super().__init__(token)
 
     def argumentize(self, token):
         self.op1 = Identifier(token["op1"])
