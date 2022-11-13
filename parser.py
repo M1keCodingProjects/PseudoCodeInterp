@@ -83,7 +83,7 @@ class Parser:
     def WRITE(self):
         return {
             "type"  : "WRITE-INSTR",
-            "value" : self.eat("message") if self.lookahead["type"] == "message" else self.Operation()
+            "value" : self.Message() if self.lookahead["type"] == "message" else self.Operation()
         }
 
     def READ(self):
@@ -152,6 +152,13 @@ class Parser:
         return {
             "type" : "UNTIL-INSTR",
             "cond" : self.Condition(),
+        }
+
+    def Message(self):
+        return {
+            "type"  : "Identifier",
+            "isVar" : False,
+            "value" : self.eat("message")["value"]
         }
 
     def List(self):
