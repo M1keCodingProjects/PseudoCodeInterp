@@ -96,11 +96,10 @@ class Parser:
         condition = self.Condition()
         thenKW = self.eat("KEYWORD")["value"]
         if thenKW != "THEN": raise Exception(f"Unexpected KEYWORD \"{thenKW}\", expected \"THEN\"")
-        block = self.Block()["value"]
         token = {
             "type"  : "IF-INSTR",
             "cond"  : condition,
-            "block" : block
+            "block" : self.Block()
         }
 
         if self.lookahead and self.lookahead["type"] != "newline":
@@ -112,7 +111,7 @@ class Parser:
     def ELSE(self):
         return {
             "type"  : "ELSE-INSTR",
-            "block" : self.Block()["value"]
+            "block" : self.Block()
         }
     
     def FOR(self):
@@ -122,7 +121,7 @@ class Parser:
         return {
             "type"  : "FOR-INSTR",
             "iters" : iters,
-            "block" : self.Block()["value"]
+            "block" : self.Block()
         }
 
     def WHILE(self):
@@ -132,14 +131,13 @@ class Parser:
         return {
             "type"  : "WHILE-INSTR",
             "cond"  : cond,
-            "block" : self.Block()["value"]
+            "block" : self.Block()
         }
 
     def REPEAT(self):
-        block = self.Block()["value"]
         token = {
             "type"  : "REPEAT-INSTR",
-            "block" : block
+            "block" : self.Block()
         }
 
         if self.lookahead and self.lookahead["type"] != "newline":
@@ -193,7 +191,7 @@ class Parser:
 
         if self.lookahead is None: raise Exception("Abrupt ending block")
         if self.lookahead["type"] != "openBlock": 
-            token["value"] = self.Expression(eatNewline = False)["value"]
+            token["value"] = [self.Expression(eatNewline = False)["value"]]
             return token
 
         token["value"] = self.Program()["value"]

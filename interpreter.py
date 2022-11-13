@@ -7,6 +7,7 @@ def Instruction(token):
     return {
         "WRITE-INSTR" : WriteInstruction,
         "READ-INSTR"  : ReadInstruction,
+        "FOR-INSTR"   : ForInstruction,
     }[token["type"]](token)
 
 def defineVariable(varName, value):
@@ -47,10 +48,10 @@ class Block(Token):
     def __init__(self, token): super().__init__(token)
 
     def argumentize(self, token):
-        self.expressions = [Assignment(expression) if expression["type"] == "Assignment" else Instruction(expression) for expression in token["value"]]
+        self.lines = [Assignment(expression) if expression["type"] == "Assignment" else Instruction(expression) for expression in token["value"]]
 
     def exec(self):
-        for expression in self.expressions: expression.exec()
+        for line in self.lines: line.exec()
 
 class Assignment(Token):
     def __init__(self, token): super().__init__(token)
@@ -60,7 +61,9 @@ class Assignment(Token):
         self.value = Operation(token["value"]) if token["value"]["type"] == "Operation" else Identifier(token["value"])
     
     def exec(self):
-        defineVariable(self.target, self.value.exec())
+        value = self.value.exec()
+        defineVariable(self.target, value)
+        return value
 
 class WriteInstruction(Token):
     def __init__(self, token): super().__init__(token)
@@ -88,8 +91,21 @@ class ReadInstruction(Token):
         for name in self.value:
             value = input(f"Program requested value for variable \"{name}\": ")
             try: value = float(value) if "." in value else int(value)
-            except ValueError: raise RuntimeError("Cannot input non-numeric value for variables.")
+            except ValueError: raise RuntimeError("Cannot input non-numeric value for variables.") from None
             defineVariable(name, value)
+
+class ForInstruction(Token):
+    def __init__(self, token): super().__init__(token)
+
+    def argumentize(self, token):
+        self.assignment = Assignment(token["iters"])
+        self.block = Block(token["block"])
+
+    def exec(self):
+        iters = self.assignment.exec()
+        if iters < 0: raise RuntimeError(f"Cannot loop a negative number ({iters}) of times.")
+        if type(iters) is not int: raise RuntimeError(f"Cannot loop a non-integer number ({iters}) of times.")
+        for i in range(iters): self.block.exec()
 
 class Operation(Token):
     def __init__(self, token): super().__init__(token)

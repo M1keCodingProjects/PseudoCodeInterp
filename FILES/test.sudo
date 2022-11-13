@@ -1,3 +1,5 @@
 READ n
-WRITE "Hello, World!"
-WRITE n * 2
+FOR i<-n DO {
+    WRITE i 
+    i <- i + 1
+}
