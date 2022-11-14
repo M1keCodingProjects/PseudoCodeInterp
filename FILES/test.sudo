@@ -1,5 +1,7 @@
-READ n
-FOR i<-n DO {
-    WRITE i 
+READ n, m
+mult <- 1
+FOR i <- 1 TO m DO {
+    mult <- mult * n
     i <- i + 1
 }
+WRITE mult

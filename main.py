@@ -15,7 +15,7 @@ def readFile():
     fileName = f"./FILES/{sys.argv[1]}.sudo"
     
     try: return open(fileName).read()
-    except Exception as e: raise Exception("Couldn't open file: invalid filename or file not found, do not include path informations or file extensions.") from None
+    except: raise Exception("Couldn't open file: invalid filename or file not found, do not include path informations or file extensions.") from None
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,10 @@ def Instruction(token):
         "WRITE-INSTR" : WriteInstruction,
         "READ-INSTR"  : ReadInstruction,
         "FOR-INSTR"   : ForInstruction,
+        "IF-INSTR"    : IfInstruction,
     }[token["type"]](token)
+
+def distinguishIdOp(token): return Operation(token) if token["type"] == "Operation" else Identifier(token)
 
 def defineVariable(varName, value):
     runtime_vars[varName] = value
@@ -58,19 +61,21 @@ class Assignment(Token):
     
     def argumentize(self, token):
         self.target = token["target"]
-        self.value = Operation(token["value"]) if token["value"]["type"] == "Operation" else Identifier(token["value"])
+        self.value = distinguishIdOp(token["value"])
     
     def exec(self):
         value = self.value.exec()
-        defineVariable(self.target, value)
+        if type(value) is tuple:
+            defineVariable(self.target, value[0])
+            value = value[1]
+        else: defineVariable(self.target, value)
         return value
 
 class WriteInstruction(Token):
     def __init__(self, token): super().__init__(token)
 
     def argumentize(self, token):
-        value = token["value"]
-        self.value = Operation(value) if value["type"] == "Operation" else Identifier(value)
+        self.value = distinguishIdOp(token["value"])
     
     def exec(self):
         print(self.value.exec())
@@ -107,6 +112,23 @@ class ForInstruction(Token):
         if type(iters) is not int: raise RuntimeError(f"Cannot loop a non-integer number ({iters}) of times.")
         for i in range(iters): self.block.exec()
 
+class IfInstruction(Token):
+    def __init__(self, token): super().__init__(token)
+
+    def argumentize(self, token):
+        self.condition = Condition(token["cond"])
+        self.block = Block(token["block"])
+        if "else" in token:
+            self.elseBlock = Block(token["else"])
+            self.exec = self.execElse
+
+    def exec(self):
+        if self.condition.exec(): self.block.exec()
+    
+    def execElse(self):
+        if self.condition.exec(): self.block.exec()
+        else: self.elseBlock.exec()
+
 class Operation(Token):
     def __init__(self, token): super().__init__(token)
 
@@ -120,6 +142,7 @@ class Operation(Token):
             "/"   : self.execDiv,
             "^"   : self.execPow,
             "MOD" : self.execMod,
+            "TO"  : self.execTo,
         })[token["operand"]]
     
     def execAdd(self): return self.op1.exec() +  self.op2.exec()
@@ -128,6 +151,32 @@ class Operation(Token):
     def execDiv(self): return self.op1.exec() /  self.op2.exec()
     def execPow(self): return self.op1.exec() ** self.op2.exec()
     def execMod(self): return self.op1.exec() %  self.op2.exec()
+    def execTo(self) :
+        op1 = self.op1.exec()
+        op2 = self.op2.exec()
+        return op1, op2 - op1
+
+class Condition(Token):
+    def __init__(self, token): super().__init__(token)
+
+    def argumentize(self, token):
+        self.cp1 = distinguishIdOp(token["cp1"])
+        self.cp2 = distinguishIdOp(token["cp2"])
+        self.exec = ({
+            "<"  : self.execLst,
+            "<=" : self.execLet,
+            "="  : self.execEqs,
+            ">"  : self.execGrt,
+            ">=" : self.execGet,
+            "!=" : self.execNeq,
+        })[token["operand"]]
+    
+    def execLst(self): return self.cp1.exec() <  self.cp2.exec()
+    def execLet(self): return self.cp1.exec() <= self.cp2.exec()
+    def execEqs(self): return self.cp1.exec() == self.cp2.exec()
+    def execGrt(self): return self.cp1.exec() >  self.cp2.exec()
+    def execGet(self): return self.cp1.exec() >= self.cp2.exec()
+    def execNeq(self): return self.cp1.exec() != self.cp2.exec()
 
 class Identifier(Token):
     def __init__(self, token): super().__init__(token)

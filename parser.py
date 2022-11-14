@@ -58,10 +58,10 @@ class Parser:
             "value" : value
         }
 
-    def Assignment(self):
+    def Assignment(self, allowTo = False):
         target = self.eat("WORD")["value"]
         self.eat("arrow")
-        value = self.Operation()
+        value = self.Operation(allowTo)
         return {
             "type"   : "Assignment",
             "target" : target,
@@ -115,7 +115,7 @@ class Parser:
         }
     
     def FOR(self):
-        iters = self.Assignment()
+        iters = self.Assignment(allowTo = True)
         doKW = self.eat("KEYWORD")["value"]
         if doKW != "DO": raise Exception(f"Unexpected KEYWORD \"{doKW}\", expected \"DO\"")
         return {
@@ -173,9 +173,9 @@ class Parser:
         }
 
     def Condition(self):
-        cp1 = self.Identifier()
-        comparisonOp = self.eat("comparison")
-        cp2 = self.Identifier()
+        cp1 = self.Operation()
+        comparisonOp = self.eat("comparison")["value"]
+        cp2 = self.Operation()
         return {
             "type"    : "Condition",
             "cp1"     : cp1,
@@ -197,13 +197,15 @@ class Parser:
         token["value"] = self.Program()["value"]
         return token
 
-    def Operation(self):
+    def Operation(self, allowTo = False):
         token = {
             "type" : "Operation",
             "op1"  : self.Identifier(),
         }
         if self.lookahead is None or self.lookahead["type"] != "operand": return token["op1"]
         operand = self.eat("operand")["value"]
+        if operand == "TO" and not allowTo: raise Exception("Range operation (OpToken \"TO\" OpToken) is only allowed within \"FOR-INSTR\" instruction AssignToken.")
+        
         op2 = self.Identifier()
         token["operand"] = operand
         token["op2"]     = op2

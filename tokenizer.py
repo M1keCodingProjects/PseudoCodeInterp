@@ -10,7 +10,7 @@ tokenPatterns = [
     ["^(<|<=|>|>=|=|!=)", "comparison"],
     ["^\"[^\"\n]*\"", "message"],
     ["^-?\d+(\.\d+)?", "NUMBER"],
-    ["^([\+\-\*\/\^]|MOD)", "operand"],
+    ["^([\+\-\*\/\^]|MOD|TO)", "operand"],
     ["^(WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL)", "KEYWORD"],
     ["^[a-zA-Z_]\w*", "WORD"],
 ]
