@@ -5,10 +5,12 @@ runtime_vars = {}
 
 def Instruction(token):
     return {
-        "WRITE-INSTR" : WriteInstruction,
-        "READ-INSTR"  : ReadInstruction,
-        "FOR-INSTR"   : ForInstruction,
-        "IF-INSTR"    : IfInstruction,
+        "WRITE-INSTR"  : WriteInstruction,
+        "READ-INSTR"   : ReadInstruction,
+        "FOR-INSTR"    : ForInstruction,
+        "IF-INSTR"     : IfInstruction,
+        "WHILE-INSTR"  : WhileInstruction,
+        "REPEAT-INSTR" : RepeatInstruction,
     }[token["type"]](token)
 
 def distinguishIdOp(token): return Operation(token) if token["type"] == "Operation" else Identifier(token)
@@ -25,17 +27,18 @@ class Interpreter:
         self.build()
         self.run()
 
-    def parse(self, doPrint=False):
-        return self.parser.parse(doPrint)
+    def parse(self):
+        return self.parser.parse(doPrint = self.dbgModeFlag)
 
     def build(self):
-        self.AST = Block(self.parse(doPrint=True))
+        self.AST = Block(self.parse())
         if self.dbgModeFlag: print("Build complete.")
 
     def run(self):
         self.AST.exec()
-        if self.dbgModeFlag: print("Execution terminated successfully.")
-        #print(runtime_vars)
+        if self.dbgModeFlag:
+            print("Execution terminated successfully.")
+            print(runtime_vars)
 
 class Token:
     def __init__(self, token):
@@ -48,8 +51,6 @@ class Token:
         pass
 
 class Block(Token):
-    def __init__(self, token): super().__init__(token)
-
     def argumentize(self, token):
         self.lines = [Assignment(expression) if expression["type"] == "Assignment" else Instruction(expression) for expression in token["value"]]
 
@@ -57,8 +58,6 @@ class Block(Token):
         for line in self.lines: line.exec()
 
 class Assignment(Token):
-    def __init__(self, token): super().__init__(token)
-    
     def argumentize(self, token):
         self.target = token["target"]
         self.value = distinguishIdOp(token["value"])
@@ -72,8 +71,6 @@ class Assignment(Token):
         return value
 
 class WriteInstruction(Token):
-    def __init__(self, token): super().__init__(token)
-
     def argumentize(self, token):
         self.value = distinguishIdOp(token["value"])
     
@@ -81,8 +78,6 @@ class WriteInstruction(Token):
         print(self.value.exec())
 
 class ReadInstruction(Token):
-    def __init__(self, token): super().__init__(token)
-
     def argumentize(self, token):
         value = token["value"]
         if type(value) is str:
@@ -100,8 +95,6 @@ class ReadInstruction(Token):
             defineVariable(name, value)
 
 class ForInstruction(Token):
-    def __init__(self, token): super().__init__(token)
-
     def argumentize(self, token):
         self.assignment = Assignment(token["iters"])
         self.block = Block(token["block"])
@@ -112,12 +105,14 @@ class ForInstruction(Token):
         if type(iters) is not int: raise RuntimeError(f"Cannot loop a non-integer number ({iters}) of times.")
         for i in range(iters): self.block.exec()
 
-class IfInstruction(Token):
-    def __init__(self, token): super().__init__(token)
-
+class ConditionalInstruction(Token):
     def argumentize(self, token):
         self.condition = Condition(token["cond"])
         self.block = Block(token["block"])
+
+class IfInstruction(ConditionalInstruction):
+    def argumentize(self, token):
+        super.argumentize(token)
         if "else" in token:
             self.elseBlock = Block(token["else"])
             self.exec = self.execElse
@@ -129,9 +124,17 @@ class IfInstruction(Token):
         if self.condition.exec(): self.block.exec()
         else: self.elseBlock.exec()
 
-class Operation(Token):
-    def __init__(self, token): super().__init__(token)
+class WhileInstruction(ConditionalInstruction):
+    def exec(self):
+        while self.condition.exec(): self.block.exec()
 
+class RepeatInstruction(ConditionalInstruction):
+    def exec(self):
+        while True:
+            self.block.exec()
+            if self.condition.exec(): break
+
+class Operation(Token):
     def argumentize(self, token):
         self.op1 = Identifier(token["op1"])
         self.op2 = Identifier(token["op2"])
@@ -157,8 +160,6 @@ class Operation(Token):
         return op1, op2 - op1
 
 class Condition(Token):
-    def __init__(self, token): super().__init__(token)
-
     def argumentize(self, token):
         self.cp1 = distinguishIdOp(token["cp1"])
         self.cp2 = distinguishIdOp(token["cp2"])
@@ -179,8 +180,6 @@ class Condition(Token):
     def execNeq(self): return self.cp1.exec() != self.cp2.exec()
 
 class Identifier(Token):
-    def __init__(self, token): super().__init__(token)
-
     def argumentize(self, token):
         self.value = token["value"]
         self.exec = self.execVar if token["isVar"] else self.execNum

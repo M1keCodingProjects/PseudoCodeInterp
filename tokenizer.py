@@ -7,7 +7,7 @@ tokenPatterns = [
     ["^\{\n*", "openBlock"],
     ["^\}", "closeBlock"],
     ["^,", ","],
-    ["^(<|<=|>|>=|=|!=)", "comparison"],
+    ["^(<=|<|>=|>|=|!=)", "comparison"],
     ["^\"[^\"\n]*\"", "message"],
     ["^-?\d+(\.\d+)?", "NUMBER"],
     ["^([\+\-\*\/\^]|MOD|TO)", "operand"],
@@ -30,13 +30,13 @@ class Tokenizer:
             if tokenType is None: return self.getNextToken()
             
             if tokenType == "message": tokenValue = tokenValue[1:-1]
-
+            
             return {
                 "type": tokenType,
                 "value": tokenValue
             }
         
-        raise Exception(f"Errore : cosa cazzo hai scritto? Che cazzo significa \"{substr}\"?")
+        raise Exception(f"The tokenizer found unmatchable text: \"{substr}\", this is a bug and should be reported.")
 
     def match(self, regexp, substr):
         _match = re.search(regexp, substr)

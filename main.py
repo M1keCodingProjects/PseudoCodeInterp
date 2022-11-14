@@ -6,7 +6,7 @@ sys.tracebacklimit = 0
 
 def main():
     fileLines = readFile()
-    interpreter = Interpreter(fileLines, toggle_dbgMode = True)
+    interpreter = Interpreter(fileLines, toggle_dbgMode = False)
     interpreter.build()
     if input("wish to run latest build (y|n)? ").lower() in ("y", "yes"): interpreter.run()
 

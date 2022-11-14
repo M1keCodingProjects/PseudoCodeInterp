@@ -1,7 +1,6 @@
-READ n, m
-mult <- 1
-FOR i <- 1 TO m DO {
-    mult <- mult * n
-    i <- i + 1
-}
-WRITE mult
+READ n
+
+REPEAT {
+    WRITE n
+    n <- n - 1
+} UNTIL n <= 0

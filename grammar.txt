@@ -1,28 +1,25 @@
-✔✔ Program     :== Expression+
-✔✔ Expression  :== ( Instruction | Assignment ) "\n"
-✔✔ Assignment  :== WORD "<-" Operation
-✔ Block       :== Expression | ( "{" Program "}" )
-✔✔ List        :== ( WORD "," )* WORD
+Program     :== Expression+
+Expression  :== ( Instruction | Assignment ) "\n"
+Assignment  :== WORD "<-" Operation
+Block       :== Expression | ( "{" Program "}" )
+List        :== ( WORD "," )* WORD
 
-✔✔ Instruction :== /^WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL/
-✔✔ WRITE       :== "WRITE" ( Operation | Message )
-✔✔ READ        :== "READ" List
-✔✔ IF          :== "IF" Condition "THEN" Block ( ELSE )?
-✔✔ ELSE        :== "ELSE" Block
-✔✔ FOR         :== "FOR" Assignment "DO" Block
-✔ WHILE       :== "WHILE" Condition "DO" Block
-✔ REPEAT      :== "REPEAT" Block "UNTIL" Condition
+Instruction :== /^WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL/
+WRITE       :== "WRITE" ( Operation | Message )
+READ        :== "READ" List
+IF          :== "IF" Condition "THEN" Block ( ELSE )?
+ELSE        :== "ELSE" Block
+FOR         :== "FOR" Assignment "DO" Block
+WHILE       :== "WHILE" Condition "DO" Block
+REPEAT      :== "REPEAT" Block "UNTIL" Condition
 
-✔✔ Operation   :== Identifier ( Operand Identifier )?
-✔✔ Operand     :== /^([\+\-\*\/\^]|MOD|TO)/
+Operation   :== Identifier ( Operand Identifier )?
+Operand     :== /^([\+\-\*\/\^]|MOD|TO)/
 
-✔✔ Message     :== /^\"[^\"\n]*\"/
-✔✔ Identifier  :== WORD | NUMBER
-✔✔ WORD        :== /^[a-zA-Z_]\w*/
-✔✔ NUMBER      :== /^\d+(\.\d+)?/
+Message     :== /^\"[^\"\n]*\"/
+Identifier  :== WORD | NUMBER
+WORD        :== /^[a-zA-Z_]\w*/
+NUMBER      :== /^\d+(\.\d+)?/
                     
-✔✔ Condition   :== Operation Comparison Operation
-✔✔ Comparison  :== /^(<|<=|>|>=|=|!=)/
-
-# ✔ (1 tick) indicates that parsing has been completed for that rule
-  ✔✔ (2 ticks) indicates that building has been completed for that rule in the current workmode (-i)
+Condition   :== Operation Comparison Operation
+Comparison  :== /^(<|<=|>|>=|=|!=)/
