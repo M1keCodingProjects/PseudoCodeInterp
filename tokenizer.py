@@ -2,6 +2,7 @@ import re
 
 tokenPatterns = [
     ["^ +", None],
+    ["^#.*", None],
     ["^\n+", "newline"],
     ["^<-", "arrow"],
     ["^\{\n*", "openBlock"],

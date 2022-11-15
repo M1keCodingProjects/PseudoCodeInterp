@@ -23,3 +23,5 @@ NUMBER      :== /^\d+(\.\d+)?/
                     
 Condition   :== Operation Comparison Operation
 Comparison  :== /^(<|<=|>|>=|=|!=)/
+
+Comment     :== /^#.*/ 

@@ -1,5 +1,5 @@
-READ n
-
+READ n #Lmao, comments
+  #also a comment
 REPEAT {
     WRITE n
     n <- n - 1
