@@ -1,8 +1,8 @@
 READ n
-IF n < 3 THEN {
+REPEAT {
     WRITE "Hello"
     FOR i <- 0 TO n DO {
         WRITE i
         i <- i + 1
     }
-}
+} UNTIL n < 3

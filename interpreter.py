@@ -181,7 +181,7 @@ class ConditionalInstruction(Token):
         self.block = Block(token["block"])
 
     def transpileJs(self):
-        return "if(%s) %s" % (self.condition.transpileJs(), self.block.transpileJs())
+        return "(%s) %s" % (self.condition.transpileJs(), self.block.transpileJs())
 
 class IfInstruction(ConditionalInstruction):
     def argumentize(self, token):
@@ -196,16 +196,29 @@ class IfInstruction(ConditionalInstruction):
     def execElse(self):
         if self.condition.exec(): self.block.exec()
         else: self.elseBlock.exec()
+    
+    def transpileJs(self):
+        text = f"if{super().transpileJs()}"
+        if hasattr(self, "elseBlock"):
+            text += f" else {self.elseBlock.transpileJs()}"
+        return text
 
 class WhileInstruction(ConditionalInstruction):
     def exec(self):
         while self.condition.exec(): self.block.exec()
+
+    def transpileJs(self):
+        return f"while{super().transpileJs()}"
 
 class RepeatInstruction(ConditionalInstruction):
     def exec(self):
         while True:
             self.block.exec()
             if self.condition.exec(): break
+    
+    def transpileJs(self):
+        blockText = self.block.transpileJs()[:-2] + (tabID + 1) * "\t" + f"if({self.condition.transpileJs()}) break;\n" + tabID * "\t" + "}"
+        return f"while(true) {blockText}"
 
 class Operation(Token):
     def argumentize(self, token):
