@@ -1,2 +1,8 @@
-#This is a comment
-WRITE "Hello, World!"
+READ n
+IF n < 3 THEN {
+    WRITE "Hello"
+    FOR i <- 0 TO n DO {
+        WRITE i
+        i <- i + 1
+    }
+}

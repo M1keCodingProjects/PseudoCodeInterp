@@ -3,6 +3,7 @@ from parser import Parser
 import sys
 
 runtime_vars = {}
+tabID = 0
 
 def Instruction(token):
     return {
@@ -36,12 +37,17 @@ class Interpreter:
         if self.dbgModeFlag: print("Build complete.")
 
     def run(self):
+        global runtime_vars
+        runtime_vars = {}
         self.AST.exec()
         if self.dbgModeFlag:
             print("Execution terminated successfully.")
             print(runtime_vars)
     
     def transpile(self):
+        global runtime_vars, tabID
+        runtime_vars = {}
+        tabID = 0
         languages = Token("").languages.keys()
         while True:
             lang = input("Select language of choice: ")
@@ -67,8 +73,8 @@ class Token:
 
     def transpile(self, lang, isStart = False): return self.languages[lang](isStart)
 
-    def transpileJs(self, isStart = False):
-        return ["(() => {\n", "\n})();"] if isStart else ""
+    def transpileJs(self):
+        return ["(() => {\n", "\n})();"]
 
 class Block(Token):
     def argumentize(self, token):
@@ -77,10 +83,14 @@ class Block(Token):
     def exec(self):
         for line in self.lines: line.exec()
 
-    def transpileJs(self, isStart):
-        boilerplate = super().transpileJs(isStart)
-        text = "\t" + ";\n\t".join([line.transpileJs() for line in self.lines]) + ";"
-        return f"{boilerplate[0]}{text}{boilerplate[1]}" if boilerplate else text
+    def transpileJs(self, isStart = False):
+        if isStart: boilerplate = super().transpileJs()
+        global tabID
+        tabID += 1
+        indent = tabID * "\t"
+        text = indent + (";\n%s" % indent).join([line.transpileJs() for line in self.lines]) + ";"
+        tabID -= 1
+        return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("{\n%s\n%s}" % (text, indent[1:]))
 
 class Assignment(Token):
     def argumentize(self, token):
@@ -94,6 +104,19 @@ class Assignment(Token):
             value = value[1]
         else: defineVariable(self.target, value)
         return value
+    
+    def transpileJs(self):
+        target = ""
+        if self.target not in runtime_vars:
+            target = "var "
+            runtime_vars[self.target] = "defined"
+        value = self.value.transpileJs()
+        target += f"{self.target} = "
+        if type(value) is tuple:
+            target += value[0]
+            return target, value
+        
+        return f"{target}{value}"
 
 class WriteInstruction(Token):
     def argumentize(self, token):
@@ -109,7 +132,7 @@ class ReadInstruction(Token):
     def argumentize(self, token):
         value = token["value"]
         if type(value) is str:
-            self.value = value
+            self.value = [value]
             return
         
         self.value = value.copy()
@@ -122,6 +145,16 @@ class ReadInstruction(Token):
             except ValueError: raise RuntimeError("Cannot input non-numeric value for variables.") from None
             defineVariable(name, value)
 
+    def transpileJs(self):
+        values = []
+        for name in self.value:
+            values.append("")
+            if name not in runtime_vars:
+                values[-1] += "var "
+                runtime_vars[name] = "defined"
+            values[-1] += f"{name} = prompt('Program requested value for variable \"{name}\": ')"
+        return (";\n" + "\t" * tabID).join(values)
+
 class ForInstruction(Token):
     def argumentize(self, token):
         self.assignment = Assignment(token["iters"])
@@ -133,14 +166,26 @@ class ForInstruction(Token):
         if type(iters) is not int: raise RuntimeError(f"Cannot loop a non-integer number ({iters}) of times.")
         for i in range(iters): self.block.exec()
 
+    def transpileJs(self):
+        iters = self.assignment.transpileJs()
+        if type(iters) is tuple:
+            iterLen = f"{iters[1][1]} - {iters[1][0]}"
+            iters = iters[0]
+        else: iterLen = iters[iters.find("=") + 2:]
+
+        return "%s;\n%s[...Array(%s)].forEach(() => %s)" % (iters, '\t' * tabID, iterLen, self.block.transpileJs())
+
 class ConditionalInstruction(Token):
     def argumentize(self, token):
         self.condition = Condition(token["cond"])
         self.block = Block(token["block"])
 
+    def transpileJs(self):
+        return "if(%s) %s" % (self.condition.transpileJs(), self.block.transpileJs())
+
 class IfInstruction(ConditionalInstruction):
     def argumentize(self, token):
-        super.argumentize(token)
+        super().argumentize(token)
         if "else" in token:
             self.elseBlock = Block(token["else"])
             self.exec = self.execElse
@@ -166,6 +211,7 @@ class Operation(Token):
     def argumentize(self, token):
         self.op1 = Identifier(token["op1"])
         self.op2 = Identifier(token["op2"])
+        self.op  = token["operand"]
         self.exec = ({
             "+"   : self.execAdd,
             "-"   : self.execSub,
@@ -174,7 +220,7 @@ class Operation(Token):
             "^"   : self.execPow,
             "MOD" : self.execMod,
             "TO"  : self.execTo,
-        })[token["operand"]]
+        })[self.op]
     
     def execAdd(self): return self.op1.exec() +  self.op2.exec()
     def execSub(self): return self.op1.exec() -  self.op2.exec()
@@ -187,10 +233,17 @@ class Operation(Token):
         op2 = self.op2.exec()
         return op1, op2 - op1
 
+    def transpileJs(self):
+        if self.op == "MOD": self.op = "%"
+        op1 = self.op1.transpileJs()
+        op2 = self.op2.transpileJs()
+        return (op1, op2) if self.op == "TO" else f"{op1} {self.op} {op2}"
+
 class Condition(Token):
     def argumentize(self, token):
         self.cp1 = distinguishIdOp(token["cp1"])
         self.cp2 = distinguishIdOp(token["cp2"])
+        self.cp  = token["operand"]
         self.exec = ({
             "<"  : self.execLst,
             "<=" : self.execLet,
@@ -198,7 +251,7 @@ class Condition(Token):
             ">"  : self.execGrt,
             ">=" : self.execGet,
             "!=" : self.execNeq,
-        })[token["operand"]]
+        })[self.cp]
     
     def execLst(self): return self.cp1.exec() <  self.cp2.exec()
     def execLet(self): return self.cp1.exec() <= self.cp2.exec()
@@ -206,6 +259,9 @@ class Condition(Token):
     def execGrt(self): return self.cp1.exec() >  self.cp2.exec()
     def execGet(self): return self.cp1.exec() >= self.cp2.exec()
     def execNeq(self): return self.cp1.exec() != self.cp2.exec()
+
+    def transpileJs(self):
+        return f"{self.cp1.transpileJs()} {self.cp} {self.cp2.transpileJs()}"
 
 class Identifier(Token):
     def argumentize(self, token):

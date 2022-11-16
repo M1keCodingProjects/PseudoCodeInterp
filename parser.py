@@ -16,11 +16,12 @@ def formatNode(node, indent = ""):
 
 class Parser:
     def __init__(self, fileContent):
-        self.tokenizer = Tokenizer("{" + fileContent + "}\n") #It takes me half an hour to explain why the {...}\n is needed, don't bother asking
+        self.tokenizer = Tokenizer("{" + fileContent + "}") #It takes me half an hour to explain why the {...}\n is needed, don't bother asking
     
     def parse(self, doPrint=False):
         self.lookahead = self.tokenizer.getNextToken()
         program = self.Program()
+        if self.lookahead is not None: raise Exception(f"Trailing content ({self.lookahead['value']}) was detected outside of main program.")
         if doPrint: print(formatNode(program))
         return program
     
@@ -101,8 +102,8 @@ class Parser:
             "cond"  : condition,
             "block" : self.Block()
         }
-
-        if self.lookahead and self.lookahead["type"] != "newline":
+        
+        if self.lookahead and self.lookahead["type"] not in ("newline", "closeBlock"):
             self.eat("KEYWORD")
             token["else"] = self.ELSE()["block"]
 

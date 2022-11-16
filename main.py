@@ -2,7 +2,7 @@
 import sys
 from interpreter import Interpreter
 
-sys.tracebacklimit = 0
+#sys.tracebacklimit = 0
 
 def main():
     fileLines = readFile()
