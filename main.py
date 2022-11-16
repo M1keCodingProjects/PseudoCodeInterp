@@ -8,7 +8,11 @@ def main():
     fileLines = readFile()
     interpreter = Interpreter(fileLines, toggle_dbgMode = False)
     interpreter.build()
-    if input("wish to run latest build (y|n)? ").lower() in ("y", "yes"): interpreter.run()
+    while True:
+        runChoice = input("wish to run latest build (-i | -t)? ").lower()
+        if   runChoice == "-i" : interpreter.run()
+        elif runChoice == "-t" : interpreter.transpile()
+        else: break
 
 def readFile():
     if len(sys.argv) < 2: raise Exception("Missing filename, specify target filename to interpret.")

@@ -1,5 +1,6 @@
 # Module for handling simulation mode
 from parser import Parser
+import sys
 
 runtime_vars = {}
 
@@ -39,10 +40,24 @@ class Interpreter:
         if self.dbgModeFlag:
             print("Execution terminated successfully.")
             print(runtime_vars)
+    
+    def transpile(self):
+        languages = Token("").languages.keys()
+        while True:
+            lang = input("Select language of choice: ")
+            if lang in languages: break
+            print("Language unavailable, your options are:\n\t%s\n\n" % '\n\t'.join(languages))
+        
+        fileContent = self.AST.transpile(lang, isStart = True)
+        with open(f"./FILES/{sys.argv[1]}.{lang}", "w") as fd: fd.write(fileContent)
+        if self.dbgModeFlag: print(f".{lang} file created successfully.")
 
 class Token:
     def __init__(self, token):
         self.argumentize(token)
+        self.languages = {
+            "js" : self.transpileJs,
+        }
     
     def argumentize(self, token):
         pass
@@ -50,12 +65,22 @@ class Token:
     def exec(self):
         pass
 
+    def transpile(self, lang, isStart = False): return self.languages[lang](isStart)
+
+    def transpileJs(self, isStart = False):
+        return ["(() => {\n", "\n})();"] if isStart else ""
+
 class Block(Token):
     def argumentize(self, token):
         self.lines = [Assignment(expression) if expression["type"] == "Assignment" else Instruction(expression) for expression in token["value"]]
 
     def exec(self):
         for line in self.lines: line.exec()
+
+    def transpileJs(self, isStart):
+        boilerplate = super().transpileJs(isStart)
+        text = "\t" + ";\n\t".join([line.transpileJs() for line in self.lines]) + ";"
+        return f"{boilerplate[0]}{text}{boilerplate[1]}" if boilerplate else text
 
 class Assignment(Token):
     def argumentize(self, token):
@@ -76,6 +101,9 @@ class WriteInstruction(Token):
     
     def exec(self):
         print(self.value.exec())
+
+    def transpileJs(self):
+        return f"console.log({self.value.transpileJs()})"
 
 class ReadInstruction(Token):
     def argumentize(self, token):
@@ -183,8 +211,12 @@ class Identifier(Token):
     def argumentize(self, token):
         self.value = token["value"]
         self.exec = self.execVar if token["isVar"] else self.execNum
-    
+        self.isMsg = not token["isVar"] and type(token["value"]) is str
+
     def execNum(self): return self.value
     def execVar(self):
         if self.value not in runtime_vars: raise RuntimeError(f"Undefined variable \"{self.value}\"")
         return runtime_vars[self.value]
+    
+    def transpileJs(self):
+        return f"\"{self.value}\"" if self.isMsg else str(self.value)
