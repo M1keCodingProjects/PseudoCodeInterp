@@ -1,5 +1,5 @@
 # Module for handling simulation mode
-from parser import Parser
+from Parser import Parser
 import sys
 
 runtime_vars = {}
@@ -63,6 +63,7 @@ class Token:
         self.argumentize(token)
         self.languages = {
             "js" : self.transpileJs,
+            "py" : self.transpilePy,
         }
     
     def argumentize(self, token):
@@ -73,8 +74,9 @@ class Token:
 
     def transpile(self, lang, isStart = False): return self.languages[lang](isStart)
 
-    def transpileJs(self):
-        return ["(() => {\n", "\n})();"]
+    def transpileJs(self): return ["(() => {\n", "\n})();"]
+    
+    def transpilePy(self): return ["def main():\n", "\n\nif __name__ == '__main__': main()"]
 
 class Block(Token):
     def argumentize(self, token):
@@ -91,6 +93,15 @@ class Block(Token):
         text = indent + (";\n%s" % indent).join([line.transpileJs() for line in self.lines]) + ";"
         tabID -= 1
         return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("{\n%s\n%s}" % (text, indent[1:]))
+    
+    def transpilePy(self, isStart = False):
+        if isStart: boilerplate = super().transpilePy()
+        global tabID
+        tabID += 1
+        indent = tabID * "\t"
+        text = indent + ("\n%s" % indent).join([line.transpilePy() for line in self.lines])
+        tabID -= 1
+        return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("\n%s\n%s" % (text, indent[1:]))
 
 class Assignment(Token):
     def argumentize(self, token):
@@ -127,6 +138,9 @@ class WriteInstruction(Token):
 
     def transpileJs(self):
         return f"console.log({self.value.transpileJs()})"
+    
+    def transpilePy(self):
+        return f"print({self.value.transpilePy()})"
 
 class ReadInstruction(Token):
     def argumentize(self, token):
@@ -288,4 +302,7 @@ class Identifier(Token):
         return runtime_vars[self.value]
     
     def transpileJs(self):
+        return f"\"{self.value}\"" if self.isMsg else str(self.value)
+    
+    def transpilePy(self):
         return f"\"{self.value}\"" if self.isMsg else str(self.value)
