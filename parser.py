@@ -20,35 +20,38 @@ class Parser:
     
     def parse(self, doPrint=False):
         self.lookahead = self.tokenizer.getNextToken()
-        program = self.Program()
+        program = self.Program(isFirst=True)
         if self.lookahead is not None: raise Exception(f"Trailing content ({self.lookahead['value']}) was detected outside of main program.")
         if doPrint: print(formatNode(program))
         return program
     
-    def Program(self):
-        lines = []
+    def Program(self, isFirst = False):
         self.eat("openBlock")
+        token = {
+            "type"  : "Program",
+            "value" : [],
+        }
+        if self.lookahead is None: return token
+        
         while self.lookahead["type"] != "closeBlock":
             if self.lookahead["type"] == "newline":
                 self.eat("newline")
+                if self.lookahead is None: return token
                 continue
             
             latestExpr = self.Expression()["value"]
             if latestExpr["type"] == "ELSE-INSTR":
-                if lines[-1]["type"] == "IF-INSTR": lines[-1]["else"] = latestExpr["block"]
+                if token["value"][-1]["type"] == "IF-INSTR": token["value"][-1]["else"] = latestExpr["block"]
                 else: raise Exception("Unexpected \"ELSE\"")
             
             elif latestExpr["type"] == "UNTIL-INSTR":
-                if lines[-1]["type"] == "REPEAT-INSTR": lines[-1]["cond"] = latestExpr["cond"]
+                if token["value"][-1]["type"] == "REPEAT-INSTR": token["value"][-1]["cond"] = latestExpr["cond"]
                 else: raise Exception("Unexpected \"UNTIL\"")
             
-            else: lines.append(latestExpr)
+            else: token["value"].append(latestExpr)
         self.eat("closeBlock")
         
-        return {
-            "type"  : "Program",
-            "value" : lines
-        }
+        return token
 
     def Expression(self, eatNewline = True):
         if self.lookahead is None: raise Exception("Abrupt ending in Expression")

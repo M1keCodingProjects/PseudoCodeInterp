@@ -2,7 +2,7 @@ import re
 
 tokenPatterns = [
     ["^ +", None],
-    ["^#.*", None],
+    ["^#[^\n$]*", None],
     ["^\n+", "newline"],
     ["^<-", "arrow"],
     ["^\{\n*", "openBlock"],
@@ -13,7 +13,8 @@ tokenPatterns = [
     ["^-?\d+(\.\d+)?", "NUMBER"],
     ["^([\+\-\*\/\^]|MOD|TO)", "operand"],
     ["^(WRITE|READ|IF|FOR|WHILE|REPEAT|THEN|DO|ELSE|UNTIL)", "KEYWORD"],
-    ["^[a-zA-Z_]\w*", "WORD"],
+    ["^[a-zA-Z][a-zA-Z0-9]*", "WORD"],
+    ["^[^ \n$]*( |\n|$)", "unknown"],
 ]
 
 class Tokenizer:

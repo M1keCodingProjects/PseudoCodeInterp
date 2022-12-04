@@ -90,7 +90,8 @@ class Block(Token):
         global tabID
         tabID += 1
         indent = tabID * "\t"
-        text = indent + (";\n%s" % indent).join([line.transpileJs() for line in self.lines]) + ";"
+        text = indent + (";\n%s" % indent).join([line.transpileJs() for line in self.lines])
+        if text[-1] != "}": text += ";"
         tabID -= 1
         return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("{\n%s\n%s}" % (text, indent[1:]))
     
@@ -101,7 +102,7 @@ class Block(Token):
         indent = tabID * "\t"
         text = indent + ("\n%s" % indent).join([line.transpilePy() for line in self.lines])
         tabID -= 1
-        return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("\n%s\n%s" % (text, indent[1:]))
+        return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("\n%s" % text)
 
 class Assignment(Token):
     def argumentize(self, token):
@@ -123,6 +124,15 @@ class Assignment(Token):
             runtime_vars[self.target] = "defined"
         value = self.value.transpileJs()
         target += f"{self.target} = "
+        if type(value) is tuple:
+            target += value[0]
+            return target, value
+        
+        return f"{target}{value}"
+    
+    def transpilePy(self):
+        value = self.value.transpilePy()
+        target = f"{self.target} = "
         if type(value) is tuple:
             target += value[0]
             return target, value
@@ -168,6 +178,11 @@ class ReadInstruction(Token):
                 runtime_vars[name] = "defined"
             values[-1] += f"{name} = prompt('Program requested value for variable \"{name}\": ')"
         return (";\n" + "\t" * tabID).join(values)
+    
+    def transpilePy(self):
+        values = []
+        for name in self.value: values.append(f"{name} = float(input('Program requested value for variable \"{name}\": '))")
+        return ("\n" + "\t" * tabID).join(values)
 
 class ForInstruction(Token):
     def argumentize(self, token):
@@ -181,13 +196,24 @@ class ForInstruction(Token):
         for i in range(iters): self.block.exec()
 
     def transpileJs(self):
-        iters = self.assignment.transpileJs()
+        iterator = self.assignment.transpileJs()
+        if type(iterator) is tuple:
+            fromValue, toValue = iterator[1]
+            iterator = iterator[0]
+        else:
+            fromValue = 0
+            toValue = iterator[iterator.find("=") + 2:]
+
+        return f"{iterator};\n" + "\t" * tabID +  f"for(let _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileJs()}"
+
+    def transpilePy(self):
+        iters = self.assignment.transpilePy()
         if type(iters) is tuple:
-            iterLen = f"{iters[1][1]} - {iters[1][0]}"
+            iterLen = f"{iters[1][0]}, {iters[1][1]}"
             iters = iters[0]
         else: iterLen = iters[iters.find("=") + 2:]
 
-        return "%s;\n%s[...Array(%s)].forEach(() => %s)" % (iters, '\t' * tabID, iterLen, self.block.transpileJs())
+        return "%s\n%sfor _ in range(%s):%s" % (iters, '\t' * tabID, iterLen, self.block.transpilePy())
 
 class ConditionalInstruction(Token):
     def argumentize(self, token):
@@ -196,6 +222,9 @@ class ConditionalInstruction(Token):
 
     def transpileJs(self):
         return "(%s) %s" % (self.condition.transpileJs(), self.block.transpileJs())
+    
+    def transpilePy(self):
+        return "%s:%s" % (self.condition.transpilePy(), self.block.transpilePy())
 
 class IfInstruction(ConditionalInstruction):
     def argumentize(self, token):
@@ -216,6 +245,12 @@ class IfInstruction(ConditionalInstruction):
         if hasattr(self, "elseBlock"):
             text += f" else {self.elseBlock.transpileJs()}"
         return text
+    
+    def transpilePy(self):
+        text = f"if {super().transpilePy()}"
+        if hasattr(self, "elseBlock"):
+            text += "\n" + "\t" * tabID + f"else:{self.elseBlock.transpilePy()}"
+        return text
 
 class WhileInstruction(ConditionalInstruction):
     def exec(self):
@@ -223,6 +258,9 @@ class WhileInstruction(ConditionalInstruction):
 
     def transpileJs(self):
         return f"while{super().transpileJs()}"
+    
+    def transpilePy(self):
+        return f"while {super().transpilePy()}"
 
 class RepeatInstruction(ConditionalInstruction):
     def exec(self):
@@ -233,6 +271,10 @@ class RepeatInstruction(ConditionalInstruction):
     def transpileJs(self):
         blockText = self.block.transpileJs()[:-2] + (tabID + 1) * "\t" + f"if({self.condition.transpileJs()}) break;\n" + tabID * "\t" + "}"
         return f"while(true) {blockText}"
+    
+    def transpilePy(self):
+        blockText = self.block.transpilePy() + "\n" + (tabID + 1) * "\t" + f"if {self.condition.transpilePy()}: break\n"
+        return f"while True:{blockText}"
 
 class Operation(Token):
     def argumentize(self, token):
@@ -265,6 +307,12 @@ class Operation(Token):
         op1 = self.op1.transpileJs()
         op2 = self.op2.transpileJs()
         return (op1, op2) if self.op == "TO" else f"{op1} {self.op} {op2}"
+    
+    def transpilePy(self):
+        if self.op == "MOD": self.op = "%"
+        op1 = self.op1.transpilePy()
+        op2 = self.op2.transpilePy()
+        return (op1, op2) if self.op == "TO" else f"{op1} {self.op} {op2}"
 
 class Condition(Token):
     def argumentize(self, token):
@@ -288,7 +336,22 @@ class Condition(Token):
     def execNeq(self): return self.cp1.exec() != self.cp2.exec()
 
     def transpileJs(self):
-        return f"{self.cp1.transpileJs()} {self.cp} {self.cp2.transpileJs()}"
+        cp1 = self.cp1.transpileJs()
+        if type(self.cp1) is Operation: cp1 = f"({cp1})"
+
+        cp2 = self.cp2.transpileJs()
+        if type(self.cp2) is Operation: cp2 = f"({cp2})"
+
+        return f"{cp1} {self.cp} {cp2}"
+    
+    def transpilePy(self):
+        cp1 = self.cp1.transpilePy()
+        if type(self.cp1) is Operation: cp1 = f"({cp1})"
+
+        cp2 = self.cp2.transpilePy()
+        if type(self.cp2) is Operation: cp2 = f"({cp2})"
+
+        return f"{cp1} {self.cp} {cp2}"
 
 class Identifier(Token):
     def argumentize(self, token):
