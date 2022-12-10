@@ -1,2 +1,1 @@
-WRITE "Hello, World!"
-# This is a comment
+FOR n <- 5 DO WRITE n * 2

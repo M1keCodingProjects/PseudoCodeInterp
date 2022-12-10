@@ -20,8 +20,8 @@ Message     :== /^\"[^\"\n]*\"/
 Identifier  :== WORD | NUMBER
 WORD        :== /^[a-zA-Z_]\w*/
 NUMBER      :== /^\d+(\.\d+)?/
-                    
+
 Condition   :== Operation Comparison Operation
 Comparison  :== /^(<|<=|>|>=|=|!=)/
 
-Comment     :== /^#[^\n$]*/ 
+Comment     :== /^#[^\n$]*/
