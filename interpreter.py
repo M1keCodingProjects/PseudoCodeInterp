@@ -62,9 +62,10 @@ class Token:
     def __init__(self, token):
         self.argumentize(token)
         self.languages = {
-            "js" : self.transpileJs,
-            "py" : self.transpilePy,
-            "c"  : self.transpileC,
+            "js"  : self.transpileJs,
+            "py"  : self.transpilePy,
+            "c"   : self.transpileC,
+            "cpp" : self.transpileCpp,
         }
     
     def argumentize(self, token):
@@ -79,7 +80,9 @@ class Token:
     
     def transpilePy(self): return ["def main():\n", "\n\nif __name__ == '__main__': main()"]
 
-    def transpileC(self): return ["#include<stdio.h>\n#include<stdlib.h>\n#include<math.h>\n\nint main() {\n", "\n}"]
+    def transpileC(self): return ["#include<stdio.h>\n#include<cstdlib>\n\nint main() {\n", "\n}"]
+
+    def transpileCpp(self): return ["#include<iostream>\n#include<cstdlib>\n\nusing namespace std;\n\nint main() {\n", "\n}"]
 
 class Block(Token):
     def argumentize(self, token):
@@ -113,6 +116,16 @@ class Block(Token):
         tabID += 1
         indent = tabID * "\t"
         text = indent + (";\n%s" % indent).join([line.transpileC() for line in self.lines])
+        if len(text.lstrip()) and text[-1] != "}": text += ";"
+        tabID -= 1
+        return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("{\n%s\n%s}" % (text, indent[1:]))
+    
+    def transpileCpp(self, isStart = False):
+        if isStart: boilerplate = super().transpileCpp()
+        global tabID
+        tabID += 1
+        indent = tabID * "\t"
+        text = indent + (";\n%s" % indent).join([line.transpileCpp() for line in self.lines])
         if len(text.lstrip()) and text[-1] != "}": text += ";"
         tabID -= 1
         return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("{\n%s\n%s}" % (text, indent[1:]))
@@ -164,6 +177,19 @@ class Assignment(Token):
             return target, value
         
         return f"{target}{value}"
+    
+    def transpileCpp(self):
+        target = ""
+        if self.target not in runtime_vars:
+            target = "float "
+            runtime_vars[self.target] = "defined"
+        value = self.value.transpileCpp()
+        target += f"{self.target} = "
+        if type(value) is tuple:
+            target += value[0]
+            return target, value
+        
+        return f"{target}{value}"
 
 class WriteInstruction(Token):
     def argumentize(self, token):
@@ -180,6 +206,9 @@ class WriteInstruction(Token):
     
     def transpileC(self):
         return f"printf(\"%f\", {self.value.transpileC()})"
+    
+    def transpileCpp(self):
+        return f"cout << {self.value.transpileCpp()} << endl"
 
 class ReadInstruction(Token):
     def argumentize(self, token):
@@ -222,6 +251,17 @@ class ReadInstruction(Token):
                 values[-1] += "float "
                 runtime_vars[name] = "defined"
             values[-1] += f"{name};\n{indent}scanf(\"%f\", &{name})"
+        return (";\n" + indent).join(values)
+    
+    def transpileCpp(self):
+        values = []
+        indent = tabID * "\t"
+        for name in self.value:
+            values.append("")
+            if name not in runtime_vars:
+                values[-1] += "float "
+                runtime_vars[name] = "defined"
+            values[-1] += f"{name};\n{indent}cin >> {name}"
         return (";\n" + indent).join(values)
 
 class ForInstruction(Token):
@@ -266,6 +306,17 @@ class ForInstruction(Token):
 
         return f"{iterator};\n" + "\t" * tabID +  f"for(int _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileC()}"
 
+    def transpileCpp(self):
+        iterator = self.assignment.transpileCpp()
+        if type(iterator) is tuple:
+            fromValue, toValue = iterator[1]
+            iterator = iterator[0]
+        else:
+            fromValue = 0
+            toValue = iterator[iterator.find("=") + 2:]
+
+        return f"{iterator};\n" + "\t" * tabID +  f"for(int _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileCpp()}"
+
 class ConditionalInstruction(Token):
     def argumentize(self, token):
         self.condition = Condition(token["cond"])
@@ -279,6 +330,9 @@ class ConditionalInstruction(Token):
     
     def transpileC(self):
         return "(%s) %s" % (self.condition.transpileC(), self.block.transpileC())
+    
+    def transpileCpp(self):
+        return "(%s) %s" % (self.condition.transpileCpp(), self.block.transpileCpp())
 
 class IfInstruction(ConditionalInstruction):
     def argumentize(self, token):
@@ -311,6 +365,12 @@ class IfInstruction(ConditionalInstruction):
         if hasattr(self, "elseBlock"):
             text += f" else {self.elseBlock.transpileC()}"
         return text
+    
+    def transpileCpp(self):
+        text = f"if{super().transpileCpp()}"
+        if hasattr(self, "elseBlock"):
+            text += f" else {self.elseBlock.transpileCpp()}"
+        return text
 
 class WhileInstruction(ConditionalInstruction):
     def exec(self):
@@ -324,6 +384,9 @@ class WhileInstruction(ConditionalInstruction):
     
     def transpileC(self):
         return f"while {super().transpileC()}"
+    
+    def transpileCpp(self):
+        return f"while {super().transpileCpp()}"
 
 class RepeatInstruction(ConditionalInstruction):
     def exec(self):
@@ -342,6 +405,10 @@ class RepeatInstruction(ConditionalInstruction):
     def transpileC(self):
         blockText = self.block.transpileC()[:-2] + (tabID + 1) * "\t" + f"if({self.condition.transpileC()}) break;\n" + tabID * "\t" + "}"
         return f"while(1) {blockText}"
+    
+    def transpileCpp(self):
+        blockText = self.block.transpileCpp()[:-2] + (tabID + 1) * "\t" + f"if({self.condition.transpileCpp()}) break;\n" + tabID * "\t" + "}"
+        return f"while(true) {blockText}"
 
 class Operation(Token):
     def argumentize(self, token):
@@ -385,6 +452,12 @@ class Operation(Token):
         if self.op == "MOD": self.op = "%"
         op1 = self.op1.transpileC()
         op2 = self.op2.transpileC()
+        return (op1, op2) if self.op == "TO" else f"{op1} {self.op} {op2}"
+    
+    def transpileCpp(self):
+        if self.op == "MOD": self.op = "%"
+        op1 = self.op1.transpileCpp()
+        op2 = self.op2.transpileCpp()
         return (op1, op2) if self.op == "TO" else f"{op1} {self.op} {op2}"
 
 class Condition(Token):
@@ -434,6 +507,15 @@ class Condition(Token):
         if type(self.cp2) is Operation: cp2 = f"({cp2})"
 
         return f"{cp1} {self.cp} {cp2}"
+    
+    def transpileCpp(self):
+        cp1 = self.cp1.transpileC()
+        if type(self.cp1) is Operation: cp1 = f"({cp1})"
+
+        cp2 = self.cp2.transpileC()
+        if type(self.cp2) is Operation: cp2 = f"({cp2})"
+
+        return f"{cp1} {self.cp} {cp2}"
 
 class Identifier(Token):
     def argumentize(self, token):
@@ -453,4 +535,7 @@ class Identifier(Token):
         return f"\"{self.value}\"" if self.isMsg else str(self.value)
     
     def transpileC(self):
+        return f"\"{self.value}\"" if self.isMsg else f"{self.value}"
+    
+    def transpileCpp(self):
         return f"\"{self.value}\"" if self.isMsg else f"{self.value}"

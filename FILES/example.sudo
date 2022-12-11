@@ -1,1 +1,1 @@
-FOR n <- 5 DO WRITE n * 2
+WRITE "Hello, World!"
