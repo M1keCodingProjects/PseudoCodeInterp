@@ -34,15 +34,14 @@ class Interpreter:
 
     def build(self):
         self.AST = Block(self.parse())
-        if self.dbgModeFlag: print("Build complete.")
+        print("Build complete.")
 
     def run(self):
         global runtime_vars
         runtime_vars = {}
         self.AST.exec()
-        if self.dbgModeFlag:
-            print("Execution terminated successfully.")
-            print(runtime_vars)
+        print("Execution terminated successfully.")
+        if self.dbgModeFlag: print(runtime_vars)
     
     def transpile(self):
         global runtime_vars, tabID
@@ -56,7 +55,7 @@ class Interpreter:
         
         fileContent = self.AST.transpile(lang, isStart = True)
         with open(f"./FILES/{sys.argv[1]}.{lang}", "w") as fd: fd.write(fileContent)
-        if self.dbgModeFlag: print(f".{lang} file created successfully.")
+        print(f".{lang} file created successfully.")
 
 class Token:
     def __init__(self, token):
@@ -66,6 +65,7 @@ class Token:
             "py"  : self.transpilePy,
             "c"   : self.transpileC,
             "cpp" : self.transpileCpp,
+            "gl"  : self.transpileGl,
         }
     
     def argumentize(self, token):
@@ -83,6 +83,8 @@ class Token:
     def transpileC(self): return ["#include<stdio.h>\n#include<cstdlib>\n\nint main() {\n", "\n}"]
 
     def transpileCpp(self): return ["#include<iostream>\n#include<cstdlib>\n\nusing namespace std;\n\nint main() {\n", "\n}"]
+
+    def transpileGl(self): return "use std = \"std GLib\"\n\n"
 
 class Block(Token):
     def argumentize(self, token):
@@ -129,6 +131,17 @@ class Block(Token):
         if len(text.lstrip()) and text[-1] != "}": text += ";"
         tabID -= 1
         return f"{boilerplate[0]}{text}{boilerplate[1]}" if isStart else ("{\n%s\n%s}" % (text, indent[1:]))
+    
+    def transpileGl(self, isStart = False):
+        global tabID
+        if isStart:
+            boilerplate = super().transpileGl()
+            tabID -= 1
+        tabID += 1
+        indent = tabID * "\t"
+        text = indent + ("\n%s" % indent).join([line.transpileGl() for line in self.lines])
+        tabID -= 1
+        return f"{boilerplate}{text}" if isStart else ("{\n%s\n%s}" % (text, indent[1:]))
 
 class Assignment(Token):
     def argumentize(self, token):
@@ -190,6 +203,19 @@ class Assignment(Token):
             return target, value
         
         return f"{target}{value}"
+    
+    def transpileGl(self):
+        target = ""
+        if self.target not in runtime_vars:
+            target = "make "
+            runtime_vars[self.target] = "defined"
+        value = self.value.transpileGl()
+        target += f"{self.target} = "
+        if type(value) is tuple:
+            target += value[0]
+            return target, value
+        
+        return f"{target}{value}"
 
 class WriteInstruction(Token):
     def argumentize(self, token):
@@ -209,6 +235,9 @@ class WriteInstruction(Token):
     
     def transpileCpp(self):
         return f"cout << {self.value.transpileCpp()} << endl"
+    
+    def transpileGl(self):
+        return f"print {self.value.transpileGl()}"
 
 class ReadInstruction(Token):
     def argumentize(self, token):
@@ -263,6 +292,17 @@ class ReadInstruction(Token):
                 runtime_vars[name] = "defined"
             values[-1] += f"{name};\n{indent}cin >> {name}"
         return (";\n" + indent).join(values)
+    
+    def transpileGl(self):
+        values = []
+        indent = tabID * "\t"
+        for name in self.value:
+            values.append("")
+            if name not in runtime_vars:
+                values[-1] += "make "
+                runtime_vars[name] = "defined"
+            values[-1] += f"{name} :num = inp"
+        return ("\n" + indent).join(values)
 
 class ForInstruction(Token):
     def argumentize(self, token):
@@ -284,7 +324,7 @@ class ForInstruction(Token):
             fromValue = 0
             toValue = iterator[iterator.find("=") + 2:]
 
-        return f"{iterator};\n" + "\t" * tabID +  f"for(let _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileJs()}"
+        return f"{iterator};\n" + "\t" * tabID + f"for(let _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileJs()}"
 
     def transpilePy(self):
         iters = self.assignment.transpilePy()
@@ -304,7 +344,7 @@ class ForInstruction(Token):
             fromValue = 0
             toValue = iterator[iterator.find("=") + 2:]
 
-        return f"{iterator};\n" + "\t" * tabID +  f"for(int _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileC()}"
+        return f"{iterator};\n" + "\t" * tabID + f"for(int _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileC()}"
 
     def transpileCpp(self):
         iterator = self.assignment.transpileCpp()
@@ -315,7 +355,19 @@ class ForInstruction(Token):
             fromValue = 0
             toValue = iterator[iterator.find("=") + 2:]
 
-        return f"{iterator};\n" + "\t" * tabID +  f"for(int _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileCpp()}"
+        return f"{iterator};\n" + "\t" * tabID + f"for(int _ = {fromValue}; _ < {toValue}; _++) {self.block.transpileCpp()}"
+    
+    def transpileGl(self):
+        iterator = self.assignment.transpileGl()
+        if type(iterator) is tuple:
+            fromValue, toValue = iterator[1]
+            toValue += f" {fromValue} -"
+            iterator = iterator[0]
+        else:
+            fromValue = 0
+            toValue = iterator[iterator.find("=") + 2:]
+
+        return f"{iterator}\n" + "\t" * tabID + f"loop {toValue} {self.block.transpileGl()}"
 
 class ConditionalInstruction(Token):
     def argumentize(self, token):
@@ -333,6 +385,9 @@ class ConditionalInstruction(Token):
     
     def transpileCpp(self):
         return "(%s) %s" % (self.condition.transpileCpp(), self.block.transpileCpp())
+    
+    def transpileGl(self):
+        return [self.condition.transpileGl(), self.block.transpileGl()]
 
 class IfInstruction(ConditionalInstruction):
     def argumentize(self, token):
@@ -371,6 +426,12 @@ class IfInstruction(ConditionalInstruction):
         if hasattr(self, "elseBlock"):
             text += f" else {self.elseBlock.transpileCpp()}"
         return text
+    
+    def transpileGl(self):
+        text = f"when " + " ".join(super().transpileGl())
+        if hasattr(self, "elseBlock"):
+            text += f" else {self.elseBlock.transpileGl()}"
+        return text
 
 class WhileInstruction(ConditionalInstruction):
     def exec(self):
@@ -387,6 +448,10 @@ class WhileInstruction(ConditionalInstruction):
     
     def transpileCpp(self):
         return f"while {super().transpileCpp()}"
+    
+    def transpileGl(self):
+        condition, block = super().transpileGl()
+        return f"when {condition} loop {block}"
 
 class RepeatInstruction(ConditionalInstruction):
     def exec(self):
@@ -409,6 +474,11 @@ class RepeatInstruction(ConditionalInstruction):
     def transpileCpp(self):
         blockText = self.block.transpileCpp()[:-2] + (tabID + 1) * "\t" + f"if({self.condition.transpileCpp()}) break;\n" + tabID * "\t" + "}"
         return f"while(true) {blockText}"
+    
+    def transpileGl(self):
+        condition, block = super().transpileGl()
+        blockText = block[:-2] + "\n" + (tabID + 1) * "\t" + f"when {condition} then exit\n" + tabID * "\t" + "}"
+        return f"when TRUE loop {blockText}"
 
 class Operation(Token):
     def argumentize(self, token):
@@ -459,6 +529,12 @@ class Operation(Token):
         op1 = self.op1.transpileCpp()
         op2 = self.op2.transpileCpp()
         return (op1, op2) if self.op == "TO" else f"{op1} {self.op} {op2}"
+    
+    def transpileGl(self):
+        if self.op == "MOD": self.op = "%"
+        op1 = self.op1.transpileGl()
+        op2 = self.op2.transpileGl()
+        return (op1, op2) if self.op == "TO" else f"{op1} {op2} {self.op}"
 
 class Condition(Token):
     def argumentize(self, token):
@@ -509,13 +585,18 @@ class Condition(Token):
         return f"{cp1} {self.cp} {cp2}"
     
     def transpileCpp(self):
-        cp1 = self.cp1.transpileC()
+        cp1 = self.cp1.transpileCpp()
         if type(self.cp1) is Operation: cp1 = f"({cp1})"
 
-        cp2 = self.cp2.transpileC()
+        cp2 = self.cp2.transpileCpp()
         if type(self.cp2) is Operation: cp2 = f"({cp2})"
 
         return f"{cp1} {self.cp} {cp2}"
+    
+    def transpileGl(self):
+        cp1 = self.cp1.transpileGl()
+        cp2 = self.cp2.transpileGl()
+        return f"{cp1} {cp2} {self.cp}"
 
 class Identifier(Token):
     def argumentize(self, token):
@@ -538,4 +619,7 @@ class Identifier(Token):
         return f"\"{self.value}\"" if self.isMsg else f"{self.value}"
     
     def transpileCpp(self):
+        return f"\"{self.value}\"" if self.isMsg else f"{self.value}"
+    
+    def transpileGl(self):
         return f"\"{self.value}\"" if self.isMsg else f"{self.value}"
